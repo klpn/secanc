@@ -66,6 +66,7 @@ inccols = Map.fromList
 
 isize = 5
 
+inccolal :: String -> [Char]
 inccolal "0" = "0–ω"
 inccolal "18" = "85–ω"
 inccolal "fob70" = "åldersstandardiserad FoB 70"
@@ -78,6 +79,7 @@ inccolal x = show istart ++ "–" ++ show iend
     where istart = (read x - 1) * isize
           iend = istart + isize - 1
 
+grpal :: String -> String -> [Char]
 grpal scol ecol = show startage ++ "–" ++ show endage
     where startage = (read scol - 1) * isize
           endage = (read ecol - 1) * isize + isize - 1
@@ -97,6 +99,7 @@ cumprob li scol ecol = map ((1-) . exp . negate . (/10^5)) (cuminc li scol ecol)
 
 yrzip li yrli = zip (map (view year) yrli) li 
 
+mkCumPlot :: [String] -> IO ()
 mkCumPlot [icdstr, systr, eystr, scol, ecol, fname] = do
     let icd = T.pack icdstr 
         (Just icdal) = Map.lookup icd codealiases 
@@ -106,13 +109,14 @@ mkCumPlot [icdstr, systr, eystr, scol, ecol, fname] = do
     xsfem <- P.toListM (sexicdyr 2 icd sy ey) 
     xsmale <- P.toListM (sexicdyr 1 icd sy ey) 
     toFile FileOptions {_fo_size=(640,480), _fo_format=SVG} fname $ do
-        layout_title .= "Kumulativ sannolikhet " ++ icdal ++ " " 
+        layout_title .= "Kumulativ cancerrisk " ++ icdal ++ " " 
                 ++ grpal scol ecol ++ " Sverige"
         layout_x_axis . laxis_title .= "Tid"
         layout_y_axis . laxis_title .= "P(x)"
         plot (line "kvinnor" [(yrzip (cumprob xsfem scol ecol) xsfem)])
         plot (line "män" [(yrzip (cumprob xsmale scol ecol) xsmale)])
 
+mkPlot :: [String] -> IO ()
 mkPlot [icdstr, systr, eystr, inccolname, fname] = do
     let icd = T.pack icdstr 
         (Just icdal) = Map.lookup icd codealiases 
@@ -128,7 +132,9 @@ mkPlot [icdstr, systr, eystr, inccolname, fname] = do
         plot (line "kvinnor" [(yrzip (colli xsfem inccolname) xsfem)])
         plot (line "män" [(yrzip (colli xsmale inccolname) xsmale)])
 
+parse :: [String] -> IO ()
 parse ("-c":xs) = mkCumPlot xs
 parse ("-i":xs) = mkPlot xs
 
+main :: IO ()
 main = getArgs >>= parse
