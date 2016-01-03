@@ -5,6 +5,7 @@
     ViewPatterns #-}
 module Main where
 
+import Data.List
 import qualified Data.Text as T
 import Data.Proxy (Proxy(..))
 import Frames
@@ -15,7 +16,6 @@ import Pipes hiding (Proxy)
 import qualified Pipes.Prelude as P
 import qualified Data.Foldable as F
 import qualified Data.Map as Map
-import Control.Arrow ((&&&))
 import System.Environment
 import CodeAliases
 
@@ -39,49 +39,101 @@ sexicdyr s icd sy ey = secancStream >-> P.filter (sexFilter s) >->
     P.filter (syrFilter sy) >-> P.filter (eyrFilter ey)
 
 inccols = Map.fromList
-    [("inc0",(inc0,"0–ω"))
-    , ("inc1",(inc1,"0–4"))
-    , ("inc2",(inc2,"5–9"))
-    , ("inc3",(inc3,"10–14"))
-    , ("inc4",(inc4,"15–19"))
-    , ("inc5",(inc5,"20–24"))
-    , ("inc6",(inc6,"25–29"))
-    , ("inc7",(inc7,"30–34"))
-    , ("inc8",(inc8,"35–39"))
-    , ("inc9",(inc9,"40–44"))
-    , ("inc10",(inc10,"45–49"))
-    , ("inc11",(inc11,"50–54"))
-    , ("inc12",(inc12,"55–59"))
-    , ("inc13",(inc13,"60–64"))
-    , ("inc14",(inc14,"65–69"))
-    , ("inc15",(inc15,"70–74"))
-    , ("inc16",(inc16,"75–79"))
-    , ("inc17",(inc17,"80–84"))
-    , ("inc18",(inc18,"85–ω"))
-    , ("fob70",(foB70,"åldersstandardiserad FoB 70"))
-    , ("bef2000",(bef2000,"åldersstandardiserad befolkningen 2000"))
-    , ("europa",(europa,"åldersstandardiserad Europas befolkning"))
-    , ("worldsegi",(worldSegi,"åldersstandardiserad världsbefolkningen, Segi"))
-    , ("worldwho",(worldWHO,"åldersstandardiserad världsbefolkningen, WHO"))]
+    [("0",inc0)
+    , ("1",inc1)
+    , ("2",inc2)
+    , ("3",inc3)
+    , ("4",inc4)
+    , ("5",inc5)
+    , ("6",inc6)
+    , ("7",inc7)
+    , ("8",inc8)
+    , ("9",inc9)
+    , ("10",inc10)
+    , ("11",inc11)
+    , ("12",inc12)
+    , ("13",inc13)
+    , ("14",inc14)
+    , ("15",inc15)
+    , ("16",inc16)
+    , ("17",inc17)
+    , ("18",inc18)
+    , ("fob70",foB70)
+    , ("bef2000",bef2000)
+    , ("europa",europa)
+    , ("worldsegi",worldSegi)
+    , ("worldwho",worldWHO)]
 
-mkPlot [icdstr, systr, eystr, inccolname, fname] = do
+icolgrps = Map.fromList
+    [("0-74", [1..15])
+    , ("0-84", [1..17])
+    , ("0-14", [1..3])
+    , ("15-44", [4..9])
+    , ("45-64", [10..13])
+    , ("65-74", [14,15])
+    , ("75-84", [16,17])]
+
+isize = 5
+
+inccolal "0" = "0–ω"
+inccolal "18" = "85–ω"
+inccolal "fob70" = "åldersstandardiserad FoB 70"
+inccolal "bef2000" = "åldersstandardiserad befolkningen 2000"
+inccolal "europa" = "åldersstandardiserad Europas befolkning"
+inccolal "worldsegi" = "åldersstandardiserad världsbefolkningen, Segi"
+inccolal "worldwho" = "åldersstandardiserad världsbefolkningen, WHO"
+
+inccolal x = show istart ++ "–" ++ show iend
+    where istart = (read x - 1) * isize
+          iend = istart + isize - 1
+
+colli li inccolname = map (view inccol) li
+    where (Just inccol) = Map.lookup inccolname inccols
+
+colgrpli li grp = map (colli li) icolnames
+    where icolnames = map (show) icols 
+          (Just icols) = Map.lookup grp icolgrps
+
+cuminc li grp = map (*isize) . map sum . transpose $ colgrpli grp li
+
+cumprob li grp = map ((1-) . exp . negate . (/10^5)) (cuminc grp li)
+
+yrzip li yrli = zip (map (view year) yrli) li 
+
+emdash str = map (\c -> if c=='-' then '–'; else c) str
+
+mkCumPlot [icdstr, systr, eystr, grp, fname] = do
     let icd = T.pack icdstr 
-        (Just ial) = Map.lookup icd codealiases 
-        (Just inccoldata) = Map.lookup inccolname inccols
-        inccol = fst inccoldata 
-        inccolal = snd inccoldata 
+        (Just icdal) = Map.lookup icd codealiases 
         sy = read systr
         ey = read eystr
 
     xsfem <- P.toListM (sexicdyr 2 icd sy ey) 
     xsmale <- P.toListM (sexicdyr 1 icd sy ey) 
     toFile FileOptions {_fo_size=(640,480), _fo_format=SVG} fname $ do
-        layout_title .= "Cancerincidens " ++ ial ++ " Sverige"
+        layout_title .= "Kumulativ sannolikhet " ++ icdal ++ " " 
+                ++ emdash grp ++ " Sverige"
         layout_x_axis . laxis_title .= "Tid"
-        layout_y_axis . laxis_title .= "Fall/100 000 " ++ inccolal
-        plot (line "kvinnor" [(map (view year &&& view inccol) xsfem)])
-        plot (line "män" [(map (view year &&& view inccol) xsmale)])
+        layout_y_axis . laxis_title .= "P(x)"
+        plot (line "kvinnor" [(yrzip (cumprob xsfem grp) xsfem)])
+        plot (line "män" [(yrzip (cumprob xsmale grp) xsmale)])
 
-main = do
-    args <- getArgs
-    mkPlot args 
+mkPlot [icdstr, systr, eystr, inccolname, fname] = do
+    let icd = T.pack icdstr 
+        (Just icdal) = Map.lookup icd codealiases 
+        sy = read systr
+        ey = read eystr
+
+    xsfem <- P.toListM (sexicdyr 2 icd sy ey) 
+    xsmale <- P.toListM (sexicdyr 1 icd sy ey) 
+    toFile FileOptions {_fo_size=(640,480), _fo_format=SVG} fname $ do
+        layout_title .= "Cancerincidens " ++ icdal ++ " Sverige"
+        layout_x_axis . laxis_title .= "Tid"
+        layout_y_axis . laxis_title .= "Fall/100 000 " ++ inccolal inccolname
+        plot (line "kvinnor" [(yrzip (colli xsfem inccolname) xsfem)])
+        plot (line "män" [(yrzip (colli xsmale inccolname) xsmale)])
+
+parse ("-c":xs) = mkCumPlot xs
+parse ("-i":xs) = mkPlot xs
+
+main = getArgs >>= parse
