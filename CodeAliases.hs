@@ -179,7 +179,7 @@ codealiases = Map.fromList
     , ("1993","ospecificerat ställe i buken och matsmältningskanalen")
     , ("1994","ospecificerat ställe i lilla bäckenet")
     , ("1995","ospecificerat ställe i extremiteterna")
-    , ("1999", "Ospecificerat ställe")
+    , ("1999", "ospecificerat ställe")
     , ("200","lymfatisk och blodbildande vävnad")
     , ("2001","malignt lymfom av non-Hodgkintyp, lymfocytärt")
     , ("2002","malignt lymfom utan närmare specifikation")

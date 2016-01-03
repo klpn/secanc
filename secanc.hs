@@ -64,15 +64,6 @@ inccols = Map.fromList
     , ("worldsegi",worldSegi)
     , ("worldwho",worldWHO)]
 
-icolgrps = Map.fromList
-    [("0-74", [1..15])
-    , ("0-84", [1..17])
-    , ("0-14", [1..3])
-    , ("15-44", [4..9])
-    , ("45-64", [10..13])
-    , ("65-74", [14,15])
-    , ("75-84", [16,17])]
-
 isize = 5
 
 inccolal "0" = "0–ω"
@@ -87,22 +78,28 @@ inccolal x = show istart ++ "–" ++ show iend
     where istart = (read x - 1) * isize
           iend = istart + isize - 1
 
+grpal scol ecol = show startage ++ "–" ++ show endage
+    where startage = (read scol - 1) * isize
+          endage = (read ecol - 1) * isize + isize - 1
+
 colli li inccolname = map (view inccol) li
     where (Just inccol) = Map.lookup inccolname inccols
 
-colgrpli li grp = map (colli li) icolnames
+colgrpli li scol ecol = map (colli li) icolnames
     where icolnames = map (show) icols 
-          (Just icols) = Map.lookup grp icolgrps
+          icols = [start..end]
+          start = read scol :: Int
+          end = read ecol :: Int
 
-cuminc li grp = map (*isize) . map sum . transpose $ colgrpli grp li
+cuminc li scol ecol = map (*isize) . map sum . transpose $ colgrpli li scol ecol
 
-cumprob li grp = map ((1-) . exp . negate . (/10^5)) (cuminc grp li)
+cumprob li scol ecol = map ((1-) . exp . negate . (/10^5)) (cuminc li scol ecol)
 
 yrzip li yrli = zip (map (view year) yrli) li 
 
 emdash str = map (\c -> if c=='-' then '–'; else c) str
 
-mkCumPlot [icdstr, systr, eystr, grp, fname] = do
+mkCumPlot [icdstr, systr, eystr, scol, ecol, fname] = do
     let icd = T.pack icdstr 
         (Just icdal) = Map.lookup icd codealiases 
         sy = read systr
@@ -112,11 +109,11 @@ mkCumPlot [icdstr, systr, eystr, grp, fname] = do
     xsmale <- P.toListM (sexicdyr 1 icd sy ey) 
     toFile FileOptions {_fo_size=(640,480), _fo_format=SVG} fname $ do
         layout_title .= "Kumulativ sannolikhet " ++ icdal ++ " " 
-                ++ emdash grp ++ " Sverige"
+                ++ grpal scol ecol ++ " Sverige"
         layout_x_axis . laxis_title .= "Tid"
         layout_y_axis . laxis_title .= "P(x)"
-        plot (line "kvinnor" [(yrzip (cumprob xsfem grp) xsfem)])
-        plot (line "män" [(yrzip (cumprob xsmale grp) xsmale)])
+        plot (line "kvinnor" [(yrzip (cumprob xsfem scol ecol) xsfem)])
+        plot (line "män" [(yrzip (cumprob xsmale scol ecol) xsmale)])
 
 mkPlot [icdstr, systr, eystr, inccolname, fname] = do
     let icd = T.pack icdstr 
