@@ -97,8 +97,6 @@ cumprob li scol ecol = map ((1-) . exp . negate . (/10^5)) (cuminc li scol ecol)
 
 yrzip li yrli = zip (map (view year) yrli) li 
 
-emdash str = map (\c -> if c=='-' then '–'; else c) str
-
 mkCumPlot [icdstr, systr, eystr, scol, ecol, fname] = do
     let icd = T.pack icdstr 
         (Just icdal) = Map.lookup icd codealiases 
