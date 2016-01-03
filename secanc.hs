@@ -99,6 +99,19 @@ cumprob li scol ecol = map ((1-) . exp . negate . (/10^5)) (cuminc li scol ecol)
 
 yrzip li yrli = zip (map (view year) yrli) li 
 
+plists li yrli = yrzip li yrli
+malists li yrli = [(yrzip (ma 5 li) yrli)]
+
+-- Moving average adapted from http://stackoverflow.com/a/1321775
+ma :: Fractional a => Int -> [a] -> [a]
+ma p = reverse . map ((/ (fromIntegral p)) . sum . take p) . (drop p) . reverse . tails
+
+femaPlot colfem xsfem colmale xsmale = do
+    plot (points "kvinnor" (plists colfem xsfem))
+    plot (line "kvinnor jämnad" (malists colfem xsfem))
+    plot (points "män" (plists colmale xsmale))
+    plot (line "män jämnad" (malists colmale xsmale))
+
 mkCumPlot :: [String] -> IO ()
 mkCumPlot [icdstr, systr, eystr, scol, ecol, fname] = do
     let icd = T.pack icdstr 
@@ -107,14 +120,15 @@ mkCumPlot [icdstr, systr, eystr, scol, ecol, fname] = do
         ey = read eystr
 
     xsfem <- P.toListM (sexicdyr 2 icd sy ey) 
-    xsmale <- P.toListM (sexicdyr 1 icd sy ey) 
+    xsmale <- P.toListM (sexicdyr 1 icd sy ey)
+    let colfem = cumprob xsfem scol ecol
+        colmale = cumprob xsmale scol ecol
     toFile FileOptions {_fo_size=(640,480), _fo_format=SVG} fname $ do
         layout_title .= "Kumulativ cancerrisk " ++ icdal ++ " " 
                 ++ grpal scol ecol ++ " Sverige"
         layout_x_axis . laxis_title .= "Tid"
         layout_y_axis . laxis_title .= "P(x)"
-        plot (line "kvinnor" [(yrzip (cumprob xsfem scol ecol) xsfem)])
-        plot (line "män" [(yrzip (cumprob xsmale scol ecol) xsmale)])
+        femaPlot colfem xsfem colmale xsmale
 
 mkPlot :: [String] -> IO ()
 mkPlot [icdstr, systr, eystr, inccolname, fname] = do
@@ -125,12 +139,13 @@ mkPlot [icdstr, systr, eystr, inccolname, fname] = do
 
     xsfem <- P.toListM (sexicdyr 2 icd sy ey) 
     xsmale <- P.toListM (sexicdyr 1 icd sy ey) 
+    let colfem = colli xsfem inccolname
+        colmale = colli xsmale inccolname
     toFile FileOptions {_fo_size=(640,480), _fo_format=SVG} fname $ do
         layout_title .= "Cancerincidens " ++ icdal ++ " Sverige"
         layout_x_axis . laxis_title .= "Tid"
         layout_y_axis . laxis_title .= "Fall/100 000 " ++ inccolal inccolname
-        plot (line "kvinnor" [(yrzip (colli xsfem inccolname) xsfem)])
-        plot (line "män" [(yrzip (colli xsmale inccolname) xsmale)])
+        femaPlot colfem xsfem colmale xsmale
 
 parse :: [String] -> IO ()
 parse ("-c":xs) = mkCumPlot xs
