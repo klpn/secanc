@@ -66,7 +66,7 @@ inccols = Map.fromList
 
 isize = 5
 
-inccolal :: String -> [Char]
+inccolal :: String -> String
 inccolal "0" = "0–ω"
 inccolal "18" = "85–ω"
 inccolal "fob70" = "åldersstandardiserad FoB 70"
@@ -79,7 +79,7 @@ inccolal x = show istart ++ "–" ++ show iend
     where istart = (read x - 1) * isize
           iend = istart + isize - 1
 
-grpal :: String -> String -> [Char]
+grpal :: String -> String -> String
 grpal scol ecol = show startage ++ "–" ++ show endage
     where startage = (read scol - 1) * isize
           endage = (read ecol - 1) * isize + isize - 1
