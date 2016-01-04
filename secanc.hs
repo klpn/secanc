@@ -97,10 +97,11 @@ cuminc li scol ecol = map (*isize) . map sum . transpose $ colgrpli li scol ecol
 
 cumprob li scol ecol = map ((1-) . exp . negate . (/10^5)) (cuminc li scol ecol)
 
-yrzip li yrli = zip (map (view year) yrli) li 
+yrzip li yrli n = zip (map (subtract n) $ map (view year) yrli) li 
 
-plists li yrli = yrzip li yrli
-malists li yrli = [(yrzip (ma 5 li) yrli)]
+plists li yrli = yrzip li yrli 0
+mapy = 5
+malists li yrli = [(yrzip (ma mapy li) yrli $ round $ (mapy-1)/2)]
 
 -- Moving average adapted from http://stackoverflow.com/a/1321775
 ma :: Fractional a => Int -> [a] -> [a]
