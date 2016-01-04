@@ -106,11 +106,23 @@ malists li yrli = [(yrzip (ma 5 li) yrli)]
 ma :: Fractional a => Int -> [a] -> [a]
 ma p = reverse . map ((/ (fromIntegral p)) . sum . take p) . (drop p) . reverse . tails
 
+femaPlot colfem xsfem [] [] = do
+   femPlot colfem xsfem 
+
+femaPlot [] [] colmale xsmale = do
+   malePlot colmale xsmale 
+
 femaPlot colfem xsfem colmale xsmale = do
-    plot (points "kvinnor" (plists colfem xsfem))
-    plot (line "kvinnor jämnad" (malists colfem xsfem))
-    plot (points "män" (plists colmale xsmale))
-    plot (line "män jämnad" (malists colmale xsmale))
+   femPlot colfem xsfem 
+   malePlot colmale xsmale 
+
+femPlot col xs = do
+    plot (points "kvinnor" (plists col xs))
+    plot (line "kvinnor jämnad" (malists col xs))
+
+malePlot col xs = do
+    plot (points "män" (plists col xs))
+    plot (line "män jämnad" (malists col xs))
 
 mkCumPlot :: [String] -> IO ()
 mkCumPlot [icdstr, systr, eystr, scol, ecol, fname] = do
@@ -123,7 +135,7 @@ mkCumPlot [icdstr, systr, eystr, scol, ecol, fname] = do
     xsmale <- P.toListM (sexicdyr 1 icd sy ey)
     let colfem = cumprob xsfem scol ecol
         colmale = cumprob xsmale scol ecol
-    toFile FileOptions {_fo_size=(640,480), _fo_format=SVG} fname $ do
+    toFile FileOptions {_fo_size=(800,600), _fo_format=SVG} fname $ do
         layout_title .= "Kumulativ cancerrisk " ++ icdal ++ " " 
                 ++ grpal scol ecol ++ " Sverige"
         layout_x_axis . laxis_title .= "Tid"
@@ -141,7 +153,7 @@ mkPlot [icdstr, systr, eystr, inccolname, fname] = do
     xsmale <- P.toListM (sexicdyr 1 icd sy ey) 
     let colfem = colli xsfem inccolname
         colmale = colli xsmale inccolname
-    toFile FileOptions {_fo_size=(640,480), _fo_format=SVG} fname $ do
+    toFile FileOptions {_fo_size=(800,600), _fo_format=SVG} fname $ do
         layout_title .= "Cancerincidens " ++ icdal ++ " Sverige"
         layout_x_axis . laxis_title .= "Tid"
         layout_y_axis . laxis_title .= "Fall/100 000 " ++ inccolal inccolname
